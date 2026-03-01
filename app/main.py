@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .database import get_db, engine
 from . import models
 from .distance import filter_and_sort_stores
-
+from .distance import calculate_bounding_box
 
 app = FastAPI()
 
@@ -32,7 +32,18 @@ def get_stores_by_zip(
 
     origin = ZIP_CODE_COORDS[zip]
 
-    stores = db.query(models.Store).all()
+    min_lat, max_lat, min_lon, max_lon = calculate_bounding_box(
+    origin["lat"],
+    origin["lon"],
+    radius,
+)
+
+    stores = (
+        db.query(models.Store)
+        .filter(models.Store.lat.between(min_lat, max_lat))
+        .filter(models.Store.lon.between(min_lon, max_lon))
+        .all()
+    )
 
     store_dicts = [
         {

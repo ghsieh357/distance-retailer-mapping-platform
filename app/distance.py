@@ -58,3 +58,18 @@ def filter_and_sort_stores(
 
     results.sort(key=lambda x: x["distance_miles"])
     return results
+
+def calculate_bounding_box(lat: float, lon: float, radius_miles: float):
+    """
+    Calculate bounding box around a point.
+    Returns (min_lat, max_lat, min_lon, max_lon).
+    """
+    lat_delta = radius_miles / 69.0
+    lon_delta = radius_miles / (69.0 * math.cos(math.radians(lat)))
+
+    min_lat = lat - lat_delta
+    max_lat = lat + lat_delta
+    min_lon = lon - lon_delta
+    max_lon = lon + lon_delta
+
+    return min_lat, max_lat, min_lon, max_lon
