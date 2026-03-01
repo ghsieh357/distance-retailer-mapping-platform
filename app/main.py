@@ -2,12 +2,11 @@
 Basic FastAPI application for DB connection test.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends
+from .zipcodes import ZIP_CODE_COORDS
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from fastapi import Depends
-from .database import get_db
-from .database import engine
+from .database import get_db, engine
 from . import models
 from .distance import filter_and_sort_stores
 
@@ -21,13 +20,18 @@ def health_check():
         result = connection.execute(text("SELECT 1"))
         return {"status": "ok", "db_check": result.scalar()}
     
-@app.get("/test-distance")
-def test_distance(
-    lat: float,
-    lon: float,
+
+@app.get("/stores")
+def get_stores_by_zip(
+    zip: str,
     radius: float = 10,
     db: Session = Depends(get_db),
 ):
+    if zip not in ZIP_CODE_COORDS:
+        raise HTTPException(status_code=404, detail="ZIP code not supported")
+
+    origin = ZIP_CODE_COORDS[zip]
+
     stores = db.query(models.Store).all()
 
     store_dicts = [
@@ -40,10 +44,24 @@ def test_distance(
         for s in stores
     ]
 
-    results = filter_and_sort_stores(lat, lon, store_dicts, radius)
+    filtered = filter_and_sort_stores(
+        origin["lat"],
+        origin["lon"],
+        store_dicts,
+        radius,
+    )
+
+    response_stores = [
+        {
+            "store_name": s["store_name"],
+            "address": s["address"],
+            "distance_miles": s["distance_miles"],
+        }
+        for s in filtered
+    ]
 
     return {
-        "origin": {"lat": lat, "lon": lon},
+        "zip": zip,
         "radius_miles": radius,
-        "results": results,
+        "stores": response_stores,
     }
