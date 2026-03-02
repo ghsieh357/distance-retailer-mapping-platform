@@ -1,77 +1,41 @@
-# Distance & Retailer Mapping Platform
+Distance & Retailer Mapping Platform
 
-## Architecture Overview
+An internal store-location and distance engine built without Google Maps API.
 
-## Setup Instructions
+This system enables radius-based store lookup using a custom Haversine distance implementation and optimized database filtering.
 
-## API Usage
+Features
 
-## Distance Engine
+Store ingestion system
+Multi-retailer data model
+Haversine distance calculation
+Radius filtering
+Bounding box performance optimization
+Indexed geospatial queries
+Clean REST API endpoint
+Zero third-party API cost
 
-## Performance Strategy
-Bounding Box Filtering
-To avoid full table scans when computing distances, bounding box is calculated around the origin ZIP using latitude and longitude deltas.
+API Endpoint
+GET /stores?zip=90210&radius=10
 
-The database query filters stores within:
-min_lat ≤ lat ≤ max_lat
-min_lon ≤ lon ≤ max_lon
+Response:
 
-Spatial Indexing
-For larger scale (100k+ stores), PostGIS with GiST indexing would eliminate most Python-side filtering. it would allow distance filtering directly in SQL. 
+{
+  "zip": "90210",
+  "radius_miles": 10,
+  "stores": [
+    {
+      "store_name": "...",
+      "address": "...",
+      "distance_miles": 2.4
+    }
+  ]
+}
 
-Caching strategy
-ZIP-to-coordinate lookups are cached in memory.
+Architecture Summary
 
-At production scale, Redis would cache ZIP → lat/lon, and frequent query results (popular ZIP + radius combos)
-
-Handling 5,000 Concurrent Users
-
-With:
-Bounding box filtering
-Indexed DB queries
-Stateless FastAPI app
-
-System scales horizontally:
-Multiple app instances behind load balancer
-DB connection pooling
-Redis caching layer
-
-## Scale & Cost Strategy
-Cheap Store Location Ingestion: 
-No per-request API cost if we can use public retailer store locator pages. Just perform one-time ingestion + periodic refresh
-
-Updating Without Constant Scraping
-To avoid scraping every day, just run ingestion weekly or monthly via scheduled job
-maybe also compare by store_name + address, and insert new stores only
-
-Computing Distances at Scale
-
-Current approach:
-Bounding box in SQL
-Haversine in Python
-
-At large scale:
-Move distance calculation into PostGIS
-Use ST_DWithin for radius queries
-Use GiST spatial index
-
-Where Caching Should Live
-
-Application Layer:
-In-memory LRU for ZIP lookups
-
-Infrastructure Layer:
-Redis for ZIP searches/Precomputed radius results
-
-Database Layer:
-Indexed columns for efficient filtering
-
-Cost Model
-
-Infrastructure:
-Single PostgreSQL instance
-FastAPI app server
-Optional Redis
-
-No external API usage
-## Tradeoffs
+FastAPI backend
+PostgreSQL database
+SQLAlchemy ORM
+Bounding box + Haversine filtering
+Indexed lat/lon columns
